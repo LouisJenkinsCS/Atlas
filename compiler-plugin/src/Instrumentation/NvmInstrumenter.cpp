@@ -46,6 +46,7 @@ namespace {
     public:
         enum CallOpType { None, Acquire, Release, MemCpy, MemMove, MemSet, StrCpy, StrNCpy, StrCat, StrNCat };
         static char ID;
+        std::string PassName;
         NvmInstrumenter()
             : FunctionPass(ID), AcquireFuncEntry(0), ReleaseFuncEntry(0), 
               StoreFuncEntry(0), PsyncAcqFuncEntry(0),
@@ -55,11 +56,15 @@ namespace {
               BarrierFuncEntry(0),
             AsyncDataFlushEntry(0), AsyncMemOpDataFlushEntry(0)
             {
+                PassName = "nvm_instr";
+                errs() << "Given pass name " << PassName << "\n";
+                errs().flush();
+
 //                initializeNvmInstrumenterPass(
 //                    *PassRegistry::getPassRegistry());
             }
         bool runOnFunction(Function &F);
-        llvm::StringRef getPassName() const { return "nvm_instr"; }
+        llvm::StringRef getPassName() const { return PassName; }
     private:
         void initializeAcquire(Module &M);
         void initializeRelease(Module &M);
@@ -121,7 +126,6 @@ static StringRef StrNCatName("strncat");
 
 bool NvmInstrumenter::runOnFunction(Function &F)
 {
-
     SmallVector<Instruction*, 8> Stores;
     SmallVector<Instruction*, 8> Acquires;
     SmallVector<Instruction*, 8> Releases;
@@ -143,6 +147,7 @@ bool NvmInstrumenter::runOnFunction(Function &F)
             if (isa<StoreInst>(I) &&
                 shouldInstrumentStore(dyn_cast<StoreInst>(I))) {
                 ++NumNvmStore;
+                errs() << "Instrumenting Store #" << NumNvmStore;
                 Stores.push_back(I);
             }
             else if (isa<CallInst>(I)) {

@@ -43,7 +43,7 @@ else
     echo "Found llvm-config in $llvmconfigpath"
 fi
 echo "Compiling object files" | tee $logfile
-timeout 300s clang++ -c $srcfile `llvm-config --cxxflags` >> $logfile 2>&1
+timeout 300s clang++ -fPIC -c $srcfile `llvm-config --cxxflags` >> $logfile 2>&1
 retval="$?"
 if [ "$retval" == "124" ]; then
     echo "Compilation took longer than 5 minutes - have you got conflicting versions of llvmretval Try building with the linked script."
@@ -55,10 +55,10 @@ else
     echo "Compilation successful"
 fi
 echo "Linking" | tee $logfile
-timeout 300s clang++ -shared NvmInstrumenter.o -o NvmInstrumenter.so >> $logfile 2>&1
+timeout 300s clang++  -fPIC -shared NvmInstrumenter.o -o NvmInstrumenter.so >> $logfile 2>&1
 retval="$?"
 if [ "$retval" == "124" ]; then
-    echo "Linking took longer than 5 minutes - have you got conflicting versions of llvmretval Try building with the linked script."
+    echo "Linking took lnvm_memcpyonger than 5 minutes - have you got conflicting versions of llvmretval Try building with the linked script."
     exit 1
 elif [ "$retval" -ne 0 ]; then
     echo "Build shared lib failed on linking, check $logfile"
