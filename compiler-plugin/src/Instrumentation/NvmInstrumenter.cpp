@@ -56,10 +56,6 @@ namespace {
               BarrierFuncEntry(0),
             AsyncDataFlushEntry(0), AsyncMemOpDataFlushEntry(0)
             {
-                PassName = "nvm_instr";
-                errs() << "Given pass name " << PassName << "\n";
-                errs().flush();
-
 //                initializeNvmInstrumenterPass(
 //                    *PassRegistry::getPassRegistry());
             }
@@ -147,7 +143,6 @@ bool NvmInstrumenter::runOnFunction(Function &F)
             if (isa<StoreInst>(I) &&
                 shouldInstrumentStore(dyn_cast<StoreInst>(I))) {
                 ++NumNvmStore;
-                errs() << "Instrumenting Store #" << NumNvmStore << "\n";
                 Stores.push_back(I);
             }
             else if (isa<CallInst>(I)) {
