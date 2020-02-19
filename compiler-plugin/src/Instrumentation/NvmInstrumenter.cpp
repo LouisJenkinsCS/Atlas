@@ -147,7 +147,7 @@ bool NvmInstrumenter::runOnFunction(Function &F)
             if (isa<StoreInst>(I) &&
                 shouldInstrumentStore(dyn_cast<StoreInst>(I))) {
                 ++NumNvmStore;
-                errs() << "Instrumenting Store #" << NumNvmStore;
+                errs() << "Instrumenting Store #" << NumNvmStore << "\n";
                 Stores.push_back(I);
             }
             else if (isa<CallInst>(I)) {
@@ -600,8 +600,9 @@ void NvmInstrumenter::addMemInstrumentation(
     assert(isa<CallInst>(I) && "Found a non-call instruction");
 
     CallInst *CallInstruction = cast<CallInst>(I);
-    assert(CallInstruction->getNumArgOperands() == 5 &&
-           "Expected 5 arguments to memset");
+    //errs() << "Memset has " << CallInstruction->getNumArgOperands() << "\n";
+    // assert(CallInstruction->getNumArgOperands() == 5 &&
+    //       "Expected 5 arguments to memset");
     Value *Args[] = {CallInstruction->getArgOperand(0),
                      CallInstruction->getArgOperand(2)};
     CallInst::Create(FuncEntry, ArrayRef<Value*>(Args), "", CallInstruction);
