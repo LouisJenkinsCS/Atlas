@@ -22,9 +22,10 @@
 #include "llvm/ADT/Statistic.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Transforms/Instrumentation.h"
-
+#include "llvm/Support/Casting.h"
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
 #include "llvm/IR/LegacyPassManager.h"
+#include "llvm/IR/Module.h"
 
 using namespace llvm;
 
@@ -37,7 +38,7 @@ STATISTIC(NumNvmMemCpy, "Number of memcopies instrumented");
 STATISTIC(NumNvmMemMove, "Number of memmoves instrumented");
 STATISTIC(NumNvmMemSet, "Number of memsets instrumented");
 STATISTIC(NumNvmStrCpy, "Number of strcpys instrumented");
-STATISTIC(NumNvmStrCat, "Number of strcats instrumented");
+STATISTIC(NumNvmStrCat, "Number of strcatshoulds instrumented");
 
 namespace {
     class NvmInstrumenter : public FunctionPass
@@ -58,7 +59,7 @@ namespace {
 //                    *PassRegistry::getPassRegistry());
             }
         bool runOnFunction(Function &F);
-        const char *getPassName() const { return "nvm_instr"; }
+        llvm::StringRef getPassName() const { return "nvm_instr"; }
     private:
         void initializeAcquire(Module &M);
         void initializeRelease(Module &M);
@@ -227,9 +228,9 @@ void NvmInstrumenter::initializeAcquire(Module &M)
     if (AcquireFuncEntry) return;
     
     IRBuilder<> IRB(M.getContext());
-    AcquireFuncEntry = dyn_cast<Function>(
-        M.getOrInsertFunction("nvm_acquire", IRB.getVoidTy(),
-                              Type::getInt8PtrTy(M.getContext()), NULL));
+    auto lval = M.getOrInsertFunction("nvm_acquire", IRB.getVoidTy(),
+                              Type::getInt8PtrTy(M.getContext()));
+    AcquireFuncEntry = M.getFunction("nvm_acquire"); // dyn_cast<Function>(&lval);
     assert(AcquireFuncEntry);
 }
 
@@ -238,138 +239,126 @@ void NvmInstrumenter::initializeRelease(Module &M)
     if (ReleaseFuncEntry) return;
 
     IRBuilder<> IRB(M.getContext());
-    ReleaseFuncEntry = dyn_cast<Function>(
-        M.getOrInsertFunction("nvm_release", IRB.getVoidTy(),
-                              Type::getInt8PtrTy(M.getContext()), NULL));
+    auto lval = M.getOrInsertFunction("nvm_release", IRB.getVoidTy(),
+                              Type::getInt8PtrTy(M.getContext()));
+    ReleaseFuncEntry = M.getFunction("nvm_release"); // dyn_cast<Function>(&lval);
     assert(ReleaseFuncEntry);
 }
 
 void NvmInstrumenter::initializeStore(Module &M)
 {
     if (StoreFuncEntry) return;
-
-    StoreFuncEntry = dyn_cast<Function>(
-        M.getOrInsertFunction("nvm_store",
+    auto lval = M.getOrInsertFunction("nvm_store",
                               Type::getVoidTy(M.getContext()),
                               Type::getInt8PtrTy(M.getContext()),
-                              Type::getInt64Ty(M.getContext()), NULL));
+                              Type::getInt64Ty(M.getContext()));
+    StoreFuncEntry = M.getFunction("nvm_store"); // dyn_cast<Function>(&lval);
     assert(StoreFuncEntry);
 }
         
 void NvmInstrumenter::initializeMemCpyFuncEntry(Module &M)
 {
     if (MemCpyFuncEntry) return;
-
-    MemCpyFuncEntry = dyn_cast<Function>(
-        M.getOrInsertFunction("nvm_memcpy",
+    auto lval = M.getOrInsertFunction("nvm_memcpy",
                               Type::getVoidTy(M.getContext()),
                               Type::getInt8PtrTy(M.getContext()),
-                              Type::getInt64Ty(M.getContext()), NULL));
+                              Type::getInt64Ty(M.getContext()));
+    MemCpyFuncEntry = M.getFunction("nvm_memcpy");// dyn_cast<Function>(&lval);
     assert(MemCpyFuncEntry);
 }
 
 void NvmInstrumenter::initializeMemMoveFuncEntry(Module &M)
 {
     if (MemMoveFuncEntry) return;
-
-    MemMoveFuncEntry = dyn_cast<Function>(
-        M.getOrInsertFunction("nvm_memmove",
+    auto lval = M.getOrInsertFunction("nvm_memmove",
                               Type::getVoidTy(M.getContext()),
                               Type::getInt8PtrTy(M.getContext()),
-                              Type::getInt64Ty(M.getContext()), NULL));
+                              Type::getInt64Ty(M.getContext()));
+    MemMoveFuncEntry = M.getFunction("nvm_memmove"); // dyn_cast<Function>(&lval);
     assert(MemMoveFuncEntry);
 }
 
 void NvmInstrumenter::initializeMemSetFuncEntry(Module &M)
 {
     if (MemSetFuncEntry) return;
-
-    MemSetFuncEntry = dyn_cast<Function>(
-        M.getOrInsertFunction("nvm_memset",
+    auto lval = M.getOrInsertFunction("nvm_memset",
                               Type::getVoidTy(M.getContext()),
                               Type::getInt8PtrTy(M.getContext()),
-                              Type::getInt64Ty(M.getContext()), NULL));
+                              Type::getInt64Ty(M.getContext()));
+    MemSetFuncEntry = M.getFunction("nvm_memset"); // dyn_cast<Function>(&lval);
     assert(MemSetFuncEntry);
 }
 
 void NvmInstrumenter::initializeStrCpyFuncEntry(Module &M)
 {
     if (StrCpyFuncEntry) return;
-
-    StrCpyFuncEntry = dyn_cast<Function>(
-        M.getOrInsertFunction("nvm_strcpy",
+    auto lval = M.getOrInsertFunction("nvm_strcpy",
                               Type::getVoidTy(M.getContext()),
                               Type::getInt8PtrTy(M.getContext()),
-                              Type::getInt64Ty(M.getContext()), NULL));
-    assert(StrCpyFuncEntry);
+                              Type::getInt64Ty(M.getContext()));
+    StrCpyFuncEntry = M.getFunction("nvm_strcpy"); // dyn_cast<Function>(&lval);
 }
 
 void NvmInstrumenter::initializeStrCatFuncEntry(Module &M)
 {
     if (StrCatFuncEntry) return;
-
-    StrCatFuncEntry = dyn_cast<Function>(
-        M.getOrInsertFunction("nvm_strcat",
+    auto lval = M.getOrInsertFunction("nvm_strcat",
                               Type::getVoidTy(M.getContext()),
                               Type::getInt8PtrTy(M.getContext()),
-                              Type::getInt64Ty(M.getContext()), NULL));
+                              Type::getInt64Ty(M.getContext()));
+    StrCatFuncEntry = M.getFunction("nvm_strcat"); // dyn_cast<Function>(&lval);
     assert(StrCatFuncEntry);
 }
 
 void NvmInstrumenter::initializeStrLenFuncEntry(Module &M)
 {
     if (StrLenFuncEntry) return;
-
-    StrLenFuncEntry = dyn_cast<Function>(
-        M.getOrInsertFunction("nvm_strlen",
+    auto lval = M.getOrInsertFunction("nvm_strlen",
                               Type::getInt64Ty(M.getContext()),
-                              Type::getInt8PtrTy(M.getContext()), NULL));
+                              Type::getInt8PtrTy(M.getContext()));
+    StrLenFuncEntry = M.getFunction("nvm_strlen"); // dyn_cast<Function>(&lval);
     assert(StrLenFuncEntry);
 }
 
 void NvmInstrumenter::initializeBarrierFuncEntry(Module &M)
 {
     if (BarrierFuncEntry) return;
-
-    BarrierFuncEntry = dyn_cast<Function>(
-        M.getOrInsertFunction("nvm_barrier",
+    auto lval = M.getOrInsertFunction("nvm_barrier",
                               Type::getVoidTy(M.getContext()),
-                              Type::getInt8PtrTy(M.getContext()), NULL));
+                              Type::getInt8PtrTy(M.getContext()));
+    BarrierFuncEntry = M.getFunction("nvm_barrier"); // dyn_cast<Function>(&lval);
     assert(BarrierFuncEntry);
 }
 
 void NvmInstrumenter::initializePsyncAcqFuncEntry(Module &M)
 {
     if (PsyncAcqFuncEntry) return;
-
-    PsyncAcqFuncEntry = dyn_cast<Function>(
-        M.getOrInsertFunction("nvm_psync_acq",
+    auto lval = M.getOrInsertFunction("nvm_psync_acq",
                               Type::getVoidTy(M.getContext()),
                               Type::getInt8PtrTy(M.getContext()),
-                              Type::getInt64Ty(M.getContext()), NULL));
+                              Type::getInt64Ty(M.getContext()));
+    PsyncAcqFuncEntry = M.getFunction("nvm_psync_acq"); // dyn_cast<Function>(&lval);
     assert(PsyncAcqFuncEntry);
 }
     
 void NvmInstrumenter::initializeAsyncDataFlushEntry(Module &M)
 {
     if (AsyncDataFlushEntry) return;
-
-    AsyncDataFlushEntry = dyn_cast<Function>(
-        M.getOrInsertFunction("AsyncDataFlush",
+    auto lval = M.getOrInsertFunction("AsyncDataFlush",
                               Type::getVoidTy(M.getContext()),
-                              Type::getInt8PtrTy(M.getContext()), NULL));
+                              Type::getInt8PtrTy(M.getContext()));
+    AsyncDataFlushEntry = M.getFunction("AsyncDataFlush"); //dyn_cast<Function>(&lval);
     assert(AsyncDataFlushEntry);
 }
 
 void NvmInstrumenter::initializeAsyncMemOpDataFlushEntry(Module &M)
 {
     if (AsyncMemOpDataFlushEntry) return;
-
-    AsyncMemOpDataFlushEntry = dyn_cast<Function>(
-        M.getOrInsertFunction("AsyncMemOpDataFlush",
+    auto lval = M.getOrInsertFunction("AsyncMemOpDataFlush",
                               Type::getVoidTy(M.getContext()),
                               Type::getInt8PtrTy(M.getContext()),
-                              Type::getInt64Ty(M.getContext()), NULL));
+                              Type::getInt64Ty(M.getContext()));
+    AsyncMemOpDataFlushEntry = M.getFunction("AsyncMemOpDataFlush"); // dyn_cast<Function>(&lval);
     assert(AsyncMemOpDataFlushEntry);
 }
 bool NvmInstrumenter::performNvmInstrumentation(
